@@ -3,6 +3,10 @@ const PENDING_PAYMENT_KEY = "shoesafari:stellar-pending-payment";
 export interface PendingPayment {
   hash: string;
   orderId: string;
+  buyerWallet?: string;
+  tokenContract?: string;
+  checkoutContractId?: string;
+  amountRaw?: string;
   amountUsd?: number;
   tokenContractId?: string;
 }
@@ -28,10 +32,16 @@ export function loadPendingPayment(): PendingPayment | null {
       return {
         hash: payment.hash,
         orderId: payment.orderId,
+        ...(typeof payment.buyerWallet === "string" && { buyerWallet: payment.buyerWallet }),
+        ...(typeof payment.tokenContract === "string" && { tokenContract: payment.tokenContract }),
+        ...(typeof payment.checkoutContractId === "string" && {
+          checkoutContractId: payment.checkoutContractId,
+        }),
+        ...(typeof payment.amountRaw === "string" && { amountRaw: payment.amountRaw }),
         ...(Number.isFinite(payment.amountUsd) && payment.amountUsd > 0
           ? { amountUsd: payment.amountUsd }
           : {}),
-        ...(typeof payment.tokenContractId === "string" ? { tokenContractId: payment.tokenContractId } : {}),
+        ...(typeof payment.tokenContractId === "string" && { tokenContractId: payment.tokenContractId }),
       };
     }
   } catch {

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "../../lib/AuthContext";
 import { db } from "../../lib/firebaseConfig";
+import { OrderCardSkeleton, PageHeaderSkeleton } from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 import { readOrder } from "../../lib/stellar/orders";
 import { applyVerifiedOrderRead } from "../../lib/stellar/orderStatus";
 import {
@@ -91,11 +93,15 @@ export default function OrdersPage() {
             continue;
           }
           try {
-            const contractOrder = await readOrder(record.orderId);
-            if (!contractOrder) {
+            const readResult = await readOrder(record.orderId);
+            if (readResult.kind !== "found") {
+              // Both a missing on-chain record and an RPC/simulation failure
+              // leave this order unverified; the status distinction is
+              // available on readResult for callers that need it.
               unverifiedCount += 1;
               continue;
             }
+            const contractOrder = readResult.order;
             const checkedAt = Date.now();
             setOrders((current) =>
               current.map((order) =>
@@ -131,7 +137,13 @@ export default function OrdersPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">Loading your orders…</div>
+      <main className="max-w-5xl mx-auto px-4 py-12 mt-8" aria-busy="true">
+        <p className="sr-only" role="status">Loading your orders</p>
+        <PageHeaderSkeleton />
+        <div className="space-y-4">
+          {Array.from({ length: 3 }, (_, index) => <OrderCardSkeleton key={index} />)}
+        </div>
+      </main>
     );
   }
 
@@ -179,12 +191,13 @@ export default function OrdersPage() {
         <p className="text-red-700 bg-red-50 border border-red-200 rounded p-4 mb-6">{error}</p>
       )}
       {!error && orders.length === 0 && (
-        <div className="border rounded-lg p-8 text-center">
-          <p className="mb-4">You have no Stellar orders yet.</p>
-          <Link href="/shop" className="text-red-700 underline">
-            Browse the shop
-          </Link>
-        </div>
+        <EmptyState
+          illustration="orders"
+          title="No orders yet"
+          description="When you buy something with Stellar, your orders will show up here so you can track payments and fulfillment."
+          actionHref="/shop"
+          actionLabel="Browse the shop"
+        />
       )}
 
       <div className="space-y-4">
